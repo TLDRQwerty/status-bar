@@ -146,14 +146,20 @@ pub mod statistics {
     pub mod volume {
         use std::process::Command;
 
-        const CMD: &str = "pactl get-sink-volume @DEFAULT_SINK@ | awk '{ print $5 }'";
+        const PROGRAM: &str = "pactl";
 
         pub fn get_volume() -> u8 {
-            let output = Command::new(&CMD)
+            let output = Command::new(&PROGRAM)
+                .arg("get-sink-volume")
+                .arg("@DEFAULT_SINK@")
                 .output()
-                .expect("foobar Failed to run command");
-            println!("{:?}", output);
-            8
+                .expect("Failed to run command");
+            let parsed_output = String::from_utf8(output.stdout)
+                .expect("Failed to convert command output from utf8 to string");
+            let parsed_output: Vec<&str> = parsed_output.split(" ").collect();
+            let mut volume = parsed_output[5].to_string();
+            let _ = &volume.pop().expect("Failed to pop last value");
+            volume.parse::<u8>().expect("Failed to parse volume level")
         }
     }
 
@@ -230,9 +236,10 @@ fn main() {
             .arg("-name")
             .arg(
                 format!("v {:.}% ", volume)
+                    + &format!(" {} ", &SEPERATOR)
                     + &format!("b {:.}% ", brightness.percentage)
                     + &format!(" {} ", &SEPERATOR)
-                    + &format!("B{:.1}", remaining_charge)
+                    + &format!("B {:.1}", remaining_charge)
                     + &format!(" {} ", &SEPERATOR)
                     + &format!(
                         "M {} / {}",
