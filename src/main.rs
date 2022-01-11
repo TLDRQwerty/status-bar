@@ -130,10 +130,10 @@ pub mod statistics {
         }
 
         pub fn brightness() -> Brightness {
-            let current: u32 =
-                value_from_file(&BRIGHTNESS.to_string()).expect("Failed to get value");
-            let max: u32 =
-                value_from_file(&MAX_BRIGHTNESS.to_string()).expect("Failed to get value");
+            let current: u32 = value_from_file(&BRIGHTNESS.to_string())
+                .expect("Failed to get and parse current backlight value");
+            let max: u32 = value_from_file(&MAX_BRIGHTNESS.to_string())
+                .expect("Failed to get and parse max backlight value");
 
             Brightness {
                 current,
@@ -171,10 +171,16 @@ pub mod statistics {
     }
 }
 
-fn date() -> String {
-    chrono::Local::now()
-        .format("%H:%M:%S | %d/%m/%y")
-        .to_string()
+struct Date {
+    date: String,
+    time: String,
+}
+
+fn date() -> Date {
+    Date {
+        date: chrono::Local::now().format("%d/%m/%y").to_string(),
+        time: chrono::Local::now().format("%H:%M:%S").to_string(),
+    }
 }
 
 fn main() {
@@ -184,6 +190,7 @@ fn main() {
         let memory_free = &memory.get("MemFree").expect("Failed").to_string();
         let memory_total = &memory.get("MemTotal").expect("Failed").to_string();
         let brightness = statistics::brightness::brightness();
+        let date = date();
         let _ = Command::new("xsetroot")
             .arg("-name")
             .arg(
@@ -195,9 +202,9 @@ fn main() {
                     + &"M ".to_string()
                     + &format!("{} / {}", memory_free, memory_total)
                     + &format!(" {} ", &SEPERATOR)
-                    + &format!("{}", date()),
+                    + &format!("{} {} {}", &date.time, &SEPERATOR, &date.date),
             )
             .output();
-        thread::sleep(time::Duration::from_secs(2));
+        thread::sleep(time::Duration::from_secs(1));
     }
 }
