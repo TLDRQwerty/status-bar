@@ -143,6 +143,20 @@ pub mod statistics {
         }
     }
 
+    pub mod volume {
+        use std::process::Command;
+
+        const CMD: &str = "pactl get-sink-volume @DEFAULT_SINK@ | awk '{ print $5 }'";
+
+        pub fn get_volume() -> u8 {
+            let output = Command::new(&CMD)
+                .output()
+                .expect("foobar Failed to run command");
+            println!("{:?}", output);
+            8
+        }
+    }
+
     pub mod memory {
         use std::collections::HashMap;
 
@@ -172,8 +186,18 @@ pub mod statistics {
                 );
             }
 
-            let free: u32 = info.get("MemFree").expect("Failed").to_string().parse().expect("Failed to parse memory free");
-            let total: u32 = info.get("MemTotal").expect("Failed").to_string().parse().expect("Failed to parse memory used");
+            let free: u32 = info
+                .get("MemFree")
+                .expect("Failed")
+                .to_string()
+                .parse()
+                .expect("Failed to parse memory free");
+            let total: u32 = info
+                .get("MemTotal")
+                .expect("Failed")
+                .to_string()
+                .parse()
+                .expect("Failed to parse memory used");
             return Memory {
                 free,
                 total,
@@ -200,17 +224,21 @@ fn main() {
         let remaining_charge = statistics::battery::read_remaning_charge();
         let memory = statistics::memory::usage();
         let brightness = statistics::brightness::brightness();
+        let volume = statistics::volume::get_volume();
         let date = date();
         let _ = Command::new("xsetroot")
             .arg("-name")
             .arg(
-                format!("b {:.}% ", brightness.percentage)
-                    + &"B ".to_string()
+                format!("v {:.}% ", volume)
+                    + &format!("b {:.}% ", brightness.percentage)
                     + &format!(" {} ", &SEPERATOR)
-                    + &format!("{:.1}", remaining_charge)
+                    + &format!("B{:.1}", remaining_charge)
                     + &format!(" {} ", &SEPERATOR)
-                    + &"M ".to_string()
-                    + &format!("{} / {}", &memory.used.to_string(), &memory.total.to_string())
+                    + &format!(
+                        "M {} / {}",
+                        &memory.used.to_string(),
+                        &memory.total.to_string()
+                    )
                     + &format!(" {} ", &SEPERATOR)
                     + &format!("{} {} {}", &date.time, &SEPERATOR, &date.date),
             )
