@@ -5,6 +5,8 @@ use std::str::FromStr;
 use std::thread;
 use std::time;
 
+const SEPERATOR: &str = "|";
+
 fn value_from_file<T: FromStr>(path: &String) -> io::Result<T> {
     fs::read_to_string(path)
         .unwrap_or(format!("Failed to find file {}", &path))
@@ -114,6 +116,33 @@ pub mod statistics {
         }
     }
 
+    pub mod brightness {
+        use crate::value_from_file;
+
+        const BRIGHTNESS: &str = "/sys/class/backlight/intel_backlight/brightness";
+        const MAX_BRIGHTNESS: &str = "/sys/class/backlight/intel_backlight/max_brightness";
+
+        #[derive(Debug)]
+        pub struct Brightness {
+            pub current: u32,
+            pub max: u32,
+            pub percentage: f32,
+        }
+
+        pub fn brightness() -> Brightness {
+            let current: u32 =
+                value_from_file(&BRIGHTNESS.to_string()).expect("Failed to get value");
+            let max: u32 =
+                value_from_file(&MAX_BRIGHTNESS.to_string()).expect("Failed to get value");
+
+            Brightness {
+                current,
+                max,
+                percentage: (current as f32 / max as f32) * 100.0,
+            }
+        }
+    }
+
     pub mod memory {
         use std::collections::HashMap;
 
@@ -154,15 +183,18 @@ fn main() {
         let memory = statistics::memory::usage();
         let memory_free = &memory.get("MemFree").expect("Failed").to_string();
         let memory_total = &memory.get("MemTotal").expect("Failed").to_string();
+        let brightness = statistics::brightness::brightness();
         let _ = Command::new("xsetroot")
             .arg("-name")
             .arg(
-                "B ".to_string()
+                format!("b {:.}% ", brightness.percentage)
+                    + &"B ".to_string()
+                    + &format!(" {} ", &SEPERATOR)
                     + &format!("{:.1}", remaining_charge)
-                    + &" | "
+                    + &format!(" {} ", &SEPERATOR)
                     + &"M ".to_string()
                     + &format!("{} / {}", memory_free, memory_total)
-                    + &" | "
+                    + &format!(" {} ", &SEPERATOR)
                     + &format!("{}", date()),
             )
             .output();
