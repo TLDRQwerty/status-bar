@@ -150,7 +150,13 @@ pub mod statistics {
 
         const MEMORY_PATH: &str = "/proc/meminfo";
 
-        pub fn usage() -> HashMap<String, String> {
+        pub struct Memory {
+            pub free: u32,
+            pub used: u32,
+            pub total: u32,
+        }
+
+        pub fn usage() -> Memory {
             let contents: String =
                 value_from_file(&MEMORY_PATH.to_string()).expect("Failed to get memory info");
 
@@ -166,7 +172,13 @@ pub mod statistics {
                 );
             }
 
-            return info;
+            let free: u32 = info.get("MemFree").expect("Failed").to_string().parse().expect("Failed to parse memory free");
+            let total: u32 = info.get("MemTotal").expect("Failed").to_string().parse().expect("Failed to parse memory used");
+            return Memory {
+                free,
+                total,
+                used: total - free,
+            };
         }
     }
 }
@@ -187,8 +199,6 @@ fn main() {
     loop {
         let remaining_charge = statistics::battery::read_remaning_charge();
         let memory = statistics::memory::usage();
-        let memory_free = &memory.get("MemFree").expect("Failed").to_string();
-        let memory_total = &memory.get("MemTotal").expect("Failed").to_string();
         let brightness = statistics::brightness::brightness();
         let date = date();
         let _ = Command::new("xsetroot")
@@ -200,7 +210,7 @@ fn main() {
                     + &format!("{:.1}", remaining_charge)
                     + &format!(" {} ", &SEPERATOR)
                     + &"M ".to_string()
-                    + &format!("{} / {}", memory_free, memory_total)
+                    + &format!("{} / {}", &memory.used.to_string(), &memory.total.to_string())
                     + &format!(" {} ", &SEPERATOR)
                     + &format!("{} {} {}", &date.time, &SEPERATOR, &date.date),
             )
