@@ -161,6 +161,23 @@ pub mod statistics {
             let _ = &volume.pop().expect("Failed to pop last value");
             volume.parse::<u8>().expect("Failed to parse volume level")
         }
+
+        pub fn is_muted() -> bool {
+            let output = Command::new(&PROGRAM)
+                .arg("get-sink-mute")
+                .arg("@DEFAULT_SINK@")
+                .output()
+                .expect("Failed to run command");
+            let parsed_output = String::from_utf8(output.stdout)
+                .expect("Failed to convert command output from utf8 to string");
+            let parsed_output: Vec<&str> = parsed_output.split(" ").collect();
+            let volume = parsed_output[1].to_string();
+            match volume.as_str().trim_end() {
+                "yes" => true,
+                "no" => false,
+                _ => panic!("Could not workout if volume is muted or not"),
+            }
+        }
     }
 
     pub mod memory {
@@ -194,13 +211,13 @@ pub mod statistics {
 
             let free: u32 = info
                 .get("MemFree")
-                .expect("Failed")
+                .expect("Failed to find 'MemFree' in meminfo")
                 .to_string()
                 .parse()
                 .expect("Failed to parse memory free");
             let total: u32 = info
                 .get("MemTotal")
-                .expect("Failed")
+                .expect("Failed to find 'MemTotal' in meminfo")
                 .to_string()
                 .parse()
                 .expect("Failed to parse memory used");
@@ -225,21 +242,37 @@ fn date() -> Date {
     }
 }
 
+fn battery_is_charging(charging: bool) -> String {
+    match charging {
+        true => "+".to_string(),
+        false => "-".to_string(),
+    }
+}
+
+fn volume_is_muted(muted: bool) -> String {
+    match muted {
+        true => "(x)".to_string(),
+        _ => "".to_string(),
+    }
+}
+
 fn main() {
     loop {
         let remaining_charge = statistics::battery::read_remaning_charge();
+        let is_charging = battery_is_charging(statistics::battery::is_charging());
         let memory = statistics::memory::usage();
         let brightness = statistics::brightness::brightness();
         let volume = statistics::volume::get_volume();
+        let muted = statistics::volume::is_muted();
         let date = date();
         let _ = Command::new("xsetroot")
             .arg("-name")
             .arg(
-                format!("v {:.}% ", volume)
+                format!("V{} {:.}% ", volume_is_muted(muted), volume)
                     + &format!(" {} ", &SEPERATOR)
                     + &format!("b {:.}% ", brightness.percentage)
                     + &format!(" {} ", &SEPERATOR)
-                    + &format!("B {:.1}", remaining_charge)
+                    + &format!("B{} {:.1}", is_charging, remaining_charge)
                     + &format!(" {} ", &SEPERATOR)
                     + &format!(
                         "M {} / {}",
