@@ -195,6 +195,7 @@ pub mod statistics {
         pub struct Memory {
             pub free: u32,
             pub used: u32,
+            pub available: u32,
             pub total: u32,
         }
 
@@ -220,6 +221,12 @@ pub mod statistics {
                 .to_string()
                 .parse()
                 .expect("Failed to parse memory free");
+            let available: u32 = info
+                .get("MemAvailable")
+                .expect("Failed to find 'MemFree' in meminfo")
+                .to_string()
+                .parse()
+                .expect("Failed to parse memory free");
             let total: u32 = info
                 .get("MemTotal")
                 .expect("Failed to find 'MemTotal' in meminfo")
@@ -229,6 +236,7 @@ pub mod statistics {
             return Memory {
                 free,
                 total,
+                available,
                 used: total - free,
             };
         }
