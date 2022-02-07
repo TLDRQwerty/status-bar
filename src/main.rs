@@ -2,7 +2,7 @@ use std::process::Command;
 use std::thread;
 use std::time;
 
-use status_bar::statistics::*;
+use status_bar::statistics::{Battery, Brightness, Memory, Volume};
 
 const SEPERATOR: &str = "|";
 
@@ -34,30 +34,15 @@ fn volume_is_muted(muted: bool) -> String {
 
 fn main() {
     loop {
-        let remaining_charge = statistics::battery::read_remaning_charge();
-        let is_charging = battery_is_charging(statistics::battery::is_charging());
-        let memory = statistics::memory::usage();
-        let brightness = statistics::brightness::brightness();
-        let volume = statistics::volume::get_volume();
-        let muted = statistics::volume::is_muted();
         let date = date();
+        let battery = Battery::new();
+        let volume = Volume::new();
+        let memory = Memory::new();
+        let brightness = Brightness::new();
+
         let _ = Command::new("xsetroot")
             .arg("-name")
-            .arg(
-                format!("V{} {:.}% ", volume_is_muted(muted), volume)
-                    + &format!(" {} ", &SEPERATOR)
-                    + &format!("b {:.}% ", brightness.percentage)
-                    + &format!(" {} ", &SEPERATOR)
-                    + &format!("B{} {:.1}", is_charging, remaining_charge.percentage)
-                    + &format!(" {} ", &SEPERATOR)
-                    + &format!(
-                        "M {} / {}",
-                        &memory.used.to_string(),
-                        &memory.total.to_string()
-                    )
-                    + &format!(" {} ", &SEPERATOR)
-                    + &format!("{} {} {}", &date.time, &SEPERATOR, &date.date),
-            )
+            .arg(&format!("{} {} {}", &date.time, &SEPERATOR, &date.date))
             .output();
         thread::sleep(time::Duration::from_secs(1));
     }
